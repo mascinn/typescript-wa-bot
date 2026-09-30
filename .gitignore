@@ -1,0 +1,14 @@
+# WhatsApp authentication/session
+auth_info_baileys/
+
+# Environment variavles
+.env
+
+# Depedencies
+node_modules/
+
+# Typescript build output
+dist/
+
+# Logs
+*.log
