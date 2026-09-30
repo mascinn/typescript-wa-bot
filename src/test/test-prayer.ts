@@ -1,4 +1,4 @@
-import { getPrayerTimes } from './services/prayer.js';
+import { getPrayerTimes } from '../services/prayer.js';
 
 const prayerTimes = await getPrayerTimes();
 

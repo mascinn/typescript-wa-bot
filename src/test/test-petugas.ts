@@ -1,4 +1,4 @@
-import { getPetugas } from './services/petugas.js';
+import { getPetugas } from '../services/petugas.js';
 
 const petugas = getPetugas("senin", "dzuhur");
 
