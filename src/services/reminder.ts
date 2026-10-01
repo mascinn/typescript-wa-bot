@@ -1,6 +1,8 @@
 import { subtractMinutes, timeToDate } from '../utils/time.js';
 import type { PrayerTimes } from './prayer.js';
 
+const sentReminders = new Set<string>;
+
 function checkReminder(times: PrayerTimes){
     const now = new Date();
 
@@ -12,6 +14,14 @@ function checkReminder(times: PrayerTimes){
             now.getHours() === reminderTime.getHours() &&
             now.getMinutes() === reminderTime.getMinutes()
         ){
+            const reminderId = `${shalat}-${reminderTime.toDateString()}`;
+
+            if(sentReminders.has(reminderId)){
+                continue;
+            }
+
+            sentReminders.add(reminderId);
+
             console.log(`Reminder: ${shalat}`);
         }
     }
