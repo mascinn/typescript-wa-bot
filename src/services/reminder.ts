@@ -2,11 +2,14 @@ import { subtractMinutes, timeToDate } from '../utils/time.js';
 import type { PrayerTimes } from './prayer.js';
 import type { WASocket } from '@whiskeysockets/baileys';
 import { config } from '../config/index.js';
+import { getCurrentDay } from '../utils/day.js';
+import { getPetugas } from './petugas.js';
 
 const sentReminders = new Set<string>();
 
 async function checkReminder(times: PrayerTimes, sock: WASocket){
     const now = new Date();
+    const hari = getCurrentDay();
 
     for(const [shalat, time] of Object.entries(times)){
         const prayerTime = timeToDate(time);
@@ -22,10 +25,26 @@ async function checkReminder(times: PrayerTimes, sock: WASocket){
                 continue;
             }
 
+            const petugas = getPetugas(hari, shalat);
+            if(!petugas){
+                continue;
+            }
+
+            const adzanJid = `${petugas.adzan.nomor}@s.whatsapp.net`;
+            const imamJid = `${petugas.imam.nomor}@s.whatsapp.net`;
+
             sentReminders.add(reminderId);
 
             await sock.sendMessage(config.whatsapp.groupJid, {
-                text: `🔔 Pengingat: 15 menit lagi menuju shalat ${shalat}.`,
+                text:
+                    `🔔 *15 menit menuju Shalat ${shalat}*\n\n` +
+                    `🕌 Muadzin: @${petugas.adzan.nomor}\n` +
+                    `🤲 Imam: @${petugas.imam.nomor}`,
+
+                mentions: [
+                    adzanJid,
+                    imamJid
+                ]
             });
 
             console.log(`Reminder: ${shalat}`);

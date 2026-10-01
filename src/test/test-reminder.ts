@@ -1,10 +1,25 @@
-import { getPrayerTimes } from '../services/prayer.js';
-import { startReminderScheduler } from '../services/reminder.js';
-import type { WASocket } from '@whiskeysockets/baileys';
-import { connectToWhatsApp } from '../services/whatsapp.js';
+import { startReminderScheduler } from "../services/reminder.js";
+import { connectToWhatsApp } from "../services/whatsapp.js";
 
-const times = await getPrayerTimes();
 const sock = await connectToWhatsApp();
 
-console.log("Prayer times: ", times);
-startReminderScheduler(times, sock);
+sock.ev.on("connection.update", (update) => {
+
+    if (update.connection !== "open") return;
+
+    console.log("WhatsApp Connected!");
+
+    const prayerTime = "12:56";
+
+    const times = {
+        subuh: "04:27",
+        dzuhur: prayerTime,
+        ashar: "14:52",
+        maghrib: "17:53",
+        isya: "19:02"
+    };
+
+    console.log("Prayer times:", times);
+
+    startReminderScheduler(times, sock);
+});
