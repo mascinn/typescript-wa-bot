@@ -1,31 +1,38 @@
-import { connectToWhatsApp } from './services/whatsapp.js';
-import{ registerConnectionHandler } from './handlers/connection.js';
-import { registerMessageHandler } from './handlers/message.js';
-import { getPrayerTimes } from './services/prayer.js';
-import { startReminderScheduler } from './services/reminder.js';
+import "./server.js";
 
-async function start(){
+import { connectToWhatsApp } from "./services/whatsapp.js";
+import { registerConnectionHandler } from "./handlers/connection.js";
+import { registerMessageHandler } from "./handlers/message.js";
+import { getPrayerTimes } from "./services/prayer.js";
+import { startReminderScheduler } from "./services/reminder.js";
+
+async function start() {
     const sock = await connectToWhatsApp();
 
     registerConnectionHandler(
-        
-        sock, 
-        
-        async () => {
-            console.log("🔥 onOpen terpanggil!");
+        sock,
 
+        async () => {
             const times = await getPrayerTimes();
 
-            console.log("Prayer times: ", times)
+            console.log("📅 Prayer times loaded");
+            console.log(`   Subuh    : ${times.subuh}`);
+            console.log(`   Dzuhur   : ${times.dzuhur}`);
+            console.log(`   Ashar    : ${times.ashar}`);
+            console.log(`   Maghrib  : ${times.maghrib}`);
+            console.log(`   Isya     : ${times.isya}`);
 
             startReminderScheduler(times, sock);
-            console.log("🔥 Scheduler berhasil dimulai!");
+
+            console.log("⏰ Reminder scheduler started");
         },
-        
+
         () => {
-        console.log("Trying to reconnect...");
-        start();
-    });
+            console.log("🔄 Trying to reconnect...");
+
+            start();
+        }
+    );
 
     registerMessageHandler(sock);
 }

@@ -1,28 +1,60 @@
-import  { DisconnectReason, type WASocket } from "@whiskeysockets/baileys";
-import qrcode from 'qrcode-terminal';
+import {
+    DisconnectReason,
+    type WASocket
+} from "@whiskeysockets/baileys";
 
-export function registerConnectionHandler(sock: WASocket, onOpen: () => void, onClose: () => void){
+import {
+    setConnected,
+    setQr
+} from "../state/qr.js";
 
+import {
+    stopReminderScheduler
+} from "../services/reminder.js";
+
+export function registerConnectionHandler(
+    sock: WASocket,
+    onOpen: () => void,
+    onClose: () => void
+) {
     sock.ev.on("connection.update", (update) => {
-        const { connection, qr } = update;
+        const {
+            connection,
+            qr
+        } = update;
 
-        if(qr){
-            qrcode.generate(qr, { small: true });
+        // QR Code tersedia
+        if (qr) {
+            setQr(qr);
         }
 
-        if(connection === "open"){
-             console.log("WhatsApp Connected!");
-             console.log("🔥 Memanggil onOpen...");
-             onOpen();
+        // WhatsApp berhasil terhubung
+        if (connection === "open") {
+            setConnected(true);
+
+            console.log("🟢 WhatsApp Connected!");
+
+            onOpen();
         }
 
-        if(connection === "close"){
-            const statusCode = (update.lastDisconnect?.error as any)?.output?.statusCode;
+        // WhatsApp terputus
+        if (connection === "close") {
+            setConnected(false);
 
-            console.log("WhatsApp Disconected. Status code: ", statusCode);
-            if(statusCode !== DisconnectReason.loggedOut){
+            stopReminderScheduler();
+
+            const statusCode =
+                (update.lastDisconnect?.error as any)
+                    ?.output?.statusCode;
+
+            console.log(
+                "🔴 WhatsApp Disconnected. Status code:",
+                statusCode
+            );
+
+            if (statusCode !== DisconnectReason.loggedOut) {
                 onClose();
             }
         }
-    })
+    });
 }
