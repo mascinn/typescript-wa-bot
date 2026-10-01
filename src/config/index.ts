@@ -8,5 +8,9 @@ export const config = {
         method: Number(process.env.PRAYER_METHOD ?? 20),
         timezone: process.env.PRAYER_TIMEZONE ?? "Asia/Jakarta",
         reminderMinutes: Number(process.env.REMINDER_MINUTES ?? 15),
-    }
+    },
+
+    whatsapp: {
+        groupJid: process.env.WHATSAPP_GROUP_JID ?? "",
+    },
 };

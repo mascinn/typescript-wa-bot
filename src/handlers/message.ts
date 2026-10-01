@@ -9,6 +9,8 @@ export function registerMessageHandler(sock: WASocket){
         if(!msg.message) return;
         if(msg.key.fromMe) return;
 
+        console.log("JID : ", msg.key.remoteJid);
+        
         const text = getMessageText(msg).trim();
 
         if(!text.startsWith("/")) return;
