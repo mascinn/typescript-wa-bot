@@ -1,7 +1,7 @@
 import  { DisconnectReason, type WASocket } from "@whiskeysockets/baileys";
 import qrcode from 'qrcode-terminal';
 
-export function registerConnectionHandler(sock: WASocket, onClose: () => void){
+export function registerConnectionHandler(sock: WASocket, onOpen: () => void, onClose: () => void){
 
     sock.ev.on("connection.update", (update) => {
         const { connection, qr } = update;
@@ -12,6 +12,8 @@ export function registerConnectionHandler(sock: WASocket, onClose: () => void){
 
         if(connection === "open"){
              console.log("WhatsApp Connected!");
+             console.log("🔥 Memanggil onOpen...");
+             onOpen();
         }
 
         if(connection === "close"){

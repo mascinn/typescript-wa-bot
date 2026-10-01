@@ -1,9 +1,11 @@
 import { subtractMinutes, timeToDate } from '../utils/time.js';
 import type { PrayerTimes } from './prayer.js';
+import type { WASocket } from '@whiskeysockets/baileys';
+import { config } from '../config/index.js';
 
-const sentReminders = new Set<string>;
+const sentReminders = new Set<string>();
 
-function checkReminder(times: PrayerTimes){
+async function checkReminder(times: PrayerTimes, sock: WASocket){
     const now = new Date();
 
     for(const [shalat, time] of Object.entries(times)){
@@ -22,6 +24,10 @@ function checkReminder(times: PrayerTimes){
 
             sentReminders.add(reminderId);
 
+            await sock.sendMessage(config.whatsapp.groupJid, {
+                text: `🔔 Pengingat: 15 menit lagi menuju shalat ${shalat}.`,
+            });
+
             console.log(`Reminder: ${shalat}`);
         }
     }
@@ -29,10 +35,10 @@ function checkReminder(times: PrayerTimes){
     console.log("Scheduler check: ", now);
 }
 
-export function startReminderScheduler(times: PrayerTimes){
-    checkReminder(times);
+export function startReminderScheduler(times: PrayerTimes, sock: WASocket){
+    checkReminder(times,sock);
 
     setInterval(() => {
-        checkReminder(times);
+        checkReminder(times, sock);
     }, 60 * 1000);
 }
