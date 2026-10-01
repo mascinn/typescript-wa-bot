@@ -22,7 +22,7 @@ async function checkReminder(times: PrayerTimes, sock: WASocket){
         );
 
         if(now >= reminderTime && now < windowEnd){
-            
+
             const reminderId = `${shalat}-${reminderTime.toDateString()}`;
 
             if(sentReminders.has(reminderId)){
@@ -41,9 +41,10 @@ async function checkReminder(times: PrayerTimes, sock: WASocket){
 
             await sock.sendMessage(config.whatsapp.groupJid, {
                 text:
-                    `🔔 *15 menit menuju Shalat ${shalat}*\n\n` +
-                    `🕌 Muadzin: @${petugas.adzan.nomor}\n` +
-                    `🤲 Imam: @${petugas.imam.nomor}`,
+                    `🕌 *${shalat} — ${time}*\n` +
+                    `⏰ 15 menit lagi\n\n` +
+                    `🔊 Muadzin: ${petugas.adzan.nama} — @${petugas.adzan.nomor}\n` +
+                    `🤲 Imam: ${petugas.imam.nama} — @${petugas.imam.nomor}`,
 
                 mentions: [
                     adzanJid,
