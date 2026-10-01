@@ -1,4 +1,4 @@
-import  { config } from '../config/index.js';
+import { config } from '../config/index.js';
 
 
 export interface PrayerTimes {
@@ -9,21 +9,32 @@ export interface PrayerTimes {
     isya: string;
 }
 
-export async function getPrayerTimes(){
-    const date = new Date();
+/**
+ * Mengambil jadwal shalat untuk tanggal tertentu dari AlAdhan API.
+ * Gunakan fungsi ini ketika perlu jadwal selain hari ini (misal: besok untuk reminder Subuh).
+ *
+ * @param date - objek Date yang akan diambil jadwalnya
+ */
+export async function getPrayerTimesForDate(date: Date): Promise<PrayerTimes> {
+    // Format tanggal sesuai format AlAdhan API: "DD-MM-YYYY"
+    // Gunakan Intl agar selalu dalam Asia/Jakarta, bukan UTC server
+    const formatter = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Asia/Jakarta",
+        day:   "2-digit",
+        month: "2-digit",
+        year:  "numeric",
+    });
 
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = String(date.getFullYear());
+    // en-GB menghasilkan "DD/MM/YYYY" → ganti "/" dengan "-"
+    const dateString = formatter.format(date).replace(/\//g, "-");
 
-    const dateString = `${day}-${month}-${year}`;
+    const url =
+        `${config.prayer.apiUrl}/timingsByCity/${dateString}` +
+        `?city=${encodeURIComponent(config.prayer.city)}` +
+        `&country=${encodeURIComponent(config.prayer.country)}` +
+        `&method=${config.prayer.method}` +
+        `&timezonestring=${encodeURIComponent(config.prayer.timezone)}`;
 
-    const url = `${config.prayer.apiUrl}/timingsByCity/${dateString}` +
-                `?city=${encodeURIComponent(config.prayer.city)}` +
-                `&country=${encodeURIComponent(config.prayer.country)}` +
-                `&method=${config.prayer.method}` +
-                `&timezonestring=${encodeURIComponent(config.prayer.timezone)}`;
-    
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -33,10 +44,18 @@ export async function getPrayerTimes(){
     const result = await response.json();
 
     return {
-        subuh: result.data.timings.Fajr,
-        dzuhur: result.data.timings.Dhuhr,
-        ashar: result.data.timings.Asr,
+        subuh:   result.data.timings.Fajr,
+        dzuhur:  result.data.timings.Dhuhr,
+        ashar:   result.data.timings.Asr,
         maghrib: result.data.timings.Maghrib,
-        isya: result.data.timings.Isha,
+        isya:    result.data.timings.Isha,
     };
 }
+
+/**
+ * Mengambil jadwal shalat untuk hari ini.
+ * Shortcut dari getPrayerTimesForDate(new Date()).
+ */
+export async function getPrayerTimes(): Promise<PrayerTimes> {
+    return getPrayerTimesForDate(new Date());
+}
