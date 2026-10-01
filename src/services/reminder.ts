@@ -4,6 +4,7 @@ import type { WASocket } from '@whiskeysockets/baileys';
 import { config } from '../config/index.js';
 import { getCurrentDay } from '../utils/day.js';
 import { getPetugas } from './petugas.js';
+import { getPrayerTimes } from './prayer.js';
 
 const sentReminders = new Set<string>();
 
@@ -54,10 +55,25 @@ async function checkReminder(times: PrayerTimes, sock: WASocket){
     console.log("Scheduler check: ", now);
 }
 
-export function startReminderScheduler(times: PrayerTimes, sock: WASocket){
+export function startReminderScheduler(
+    times: PrayerTimes,
+    sock: WASocket
+){
+    let currentTimes = times;
+    let currentDate = new Date().toDateString();
+
     checkReminder(times,sock);
 
-    setInterval(() => {
-        checkReminder(times, sock);
+    setInterval(async () => {
+        const today = new Date().toDateString();
+
+        if(today !== currentDate){
+            currentTimes = await getPrayerTimes();
+            currentDate = today;
+
+            console.log("Prayer times updated: ", currentTimes);
+        }
+
+        checkReminder(currentTimes, sock);
     }, 60 * 1000);
 }
