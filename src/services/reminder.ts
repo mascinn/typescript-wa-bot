@@ -7,6 +7,7 @@ import { getPetugas } from './petugas.js';
 import { getPrayerTimes } from './prayer.js';
 
 const sentReminders = new Set<string>();
+const REMINDER_WINDOW_MINUTES = 2;
 
 async function checkReminder(times: PrayerTimes, sock: WASocket){
     const now = new Date();
@@ -16,10 +17,12 @@ async function checkReminder(times: PrayerTimes, sock: WASocket){
         const prayerTime = timeToDate(time);
         const reminderTime = subtractMinutes(prayerTime, 15);
 
-        if (
-            now.getHours() === reminderTime.getHours() &&
-            now.getMinutes() === reminderTime.getMinutes()
-        ){
+        const windowEnd = new Date(
+            reminderTime.getTime() + REMINDER_WINDOW_MINUTES * 60 * 1000
+        );
+
+        if(now >= reminderTime && now < windowEnd){
+            
             const reminderId = `${shalat}-${reminderTime.toDateString()}`;
 
             if(sentReminders.has(reminderId)){
