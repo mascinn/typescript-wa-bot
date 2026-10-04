@@ -10,12 +10,12 @@
  * 4. Tanggal besok digunakan, bukan tanggal hari ini
  */
 
-import { writeFileSync, existsSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { writeFileSync, existsSync, unlinkSync, mkdirSync } from "node:fs";
+import { resolve } from "node:path";
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const STATE_PATH = join(__dirname, "../state/kultum-state.json");
+// State kultum sekarang disimpan di storage/ (root project)
+mkdirSync(resolve("storage"), { recursive: true });
+const STATE_PATH = resolve("storage", "kultum-state.json");
 
 // ---------------------------------------------------------------------------
 // Helper — bersihkan state sebelum test

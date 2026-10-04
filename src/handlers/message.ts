@@ -2,31 +2,42 @@ import type { WASocket, WAMessage } from '@whiskeysockets/baileys';
 import { getMessageText } from '../utils/message.js';
 import { getCommand } from '../commands/index.js';
 
-export function registerMessageHandler(sock: WASocket){
-    sock.ev.on("messages.upsert", (data) => {
-        const msg: WAMessage = data.messages[0];
+async function handleMessage(sock: WASocket, msg: WAMessage) {
+    if (!msg.message) return;
 
-        if(!msg.message) return;
-        if(msg.key.fromMe) return;
+    const text = getMessageText(msg).trim();
+    if (!text.startsWith("/")) return;
 
-        console.log("JID : ", msg.key.remoteJid);
-        
-        const text = getMessageText(msg).trim();
+    console.log("📩 Pesan command terdeteksi dari JID:", msg.key.remoteJid, "Text:", text);
 
-        if(!text.startsWith("/")) return;
+    const [rawName, ...args] = text.slice(1).split(/\s+/);
+    const commandName = rawName.toLowerCase();
+    const command = getCommand(commandName);
 
-        const commandName = text.slice(1).split(" ")[0].toLowerCase();
-        const command = getCommand(commandName);
+    if (!command) return;
+    console.log(`Incoming command: ${text} from ${msg.pushName || 'User'}`);
 
-        if(!command) return;
-        console.log(`Incoming command: ${text} from ${msg.pushName || 'User'}`);
-
-        command.execute({
+    try {
+        await command.execute({
             sock,
             msg,
             text,
+            args,
         });
 
-        console.log("✓ Send reply for command ", text)
-    })
+        console.log("✓ Berhasil membalas command:", text);
+    } catch (err) {
+        console.error(`❌ Command "${commandName}" gagal:`, err);
+    }
+}
+
+export function registerMessageHandler(sock: WASocket){
+    sock.ev.on("messages.upsert", ({ messages, type }) => {
+        // Hanya proses pesan baru (bukan riwayat yang disinkronkan saat connect)
+        if (type !== "notify") return;
+
+        for (const msg of messages) {
+            void handleMessage(sock, msg);
+        }
+    });
 }

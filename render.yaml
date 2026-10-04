@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: whatsapp-bot
+    runtime: bun
+    plan: free
+    buildCommand: bun install && bun run build
+    startCommand: bun start
+    healthCheckPath: /health
+    envVars:
+      - key: TZ
+        value: Asia/Jakarta
+      - key: PRAYER_API_URL
+        value: https://api.aladhan.com/v1
+      - key: PRAYER_CITY
+        value: Bandar Lampung
+      - key: PRAYER_COUNTRY
+        value: Indonesia
+      - key: PRAYER_METHOD
+        value: "20"
+      - key: PRAYER_TIMEZONE
+        value: Asia/Jakarta
+      - key: REMINDER_MINUTES
+        value: "15"
+      - key: WHATSAPP_GROUP_JID
+        sync: false
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false

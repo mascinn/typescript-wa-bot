@@ -2,7 +2,7 @@
  * kultum.ts
  *
  * Mengelola rotasi petugas kultum dengan state persisten via JSON file.
- * State disimpan di: src/state/kultum-state.json
+ * State disimpan di: storage/kultum-state.json
  *
  * Struktur state:
  * {
@@ -12,9 +12,11 @@
  * }
  */
 
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+// Di-import (bukan dibaca via readFileSync) supaya `tsc` ikut menyalin
+// file JSON ini ke dist/ — sebelumnya `bun start` crash karena file tidak ada.
+import petugasKultumData from "../data/jadwal-kultum.json" with { type: "json" };
+import { readJson, writeJson } from "../utils/storage.js";
+import { formatDateKey } from "../utils/time.js";
 
 // ---------------------------------------------------------------------------
 // Tipe
@@ -35,63 +37,33 @@ interface KultumState {
 // Data petugas kultum
 // ---------------------------------------------------------------------------
 
-const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const STATE_FILE = "kultum-state.json";
 
-// Jalur ke data JSON petugas kultum
-const KULTUM_DATA_PATH = join(
-    __dirname,
-    "../data/jadwal-kultum.json"
-);
-
-// Jalur ke file state (persistent)
-const STATE_PATH = join(
-    __dirname,
-    "../state/kultum-state.json"
-);
-
-// Load data petugas kultum dari JSON
-const petugasKultumList: PetugasKultum[] = JSON.parse(
-    readFileSync(KULTUM_DATA_PATH, "utf-8")
-);
+const petugasKultumList: PetugasKultum[] = petugasKultumData;
 
 const TOTAL_PETUGAS = petugasKultumList.length;
+
+if (TOTAL_PETUGAS === 0) {
+    throw new Error("jadwal-kultum.json kosong — minimal harus ada 1 petugas kultum.");
+}
 
 // ---------------------------------------------------------------------------
 // State management
 // ---------------------------------------------------------------------------
 
 function loadState(): KultumState | null {
-    if (!existsSync(STATE_PATH)) {
-        return null;
+    const state = readJson<KultumState>(STATE_FILE);
+
+    // Index di luar jangkauan (misal daftar petugas dikurangi) → mulai ulang dari 0
+    if (state && (state.index < 0 || state.index >= TOTAL_PETUGAS)) {
+        return { ...state, index: TOTAL_PETUGAS - 1 };
     }
 
-    try {
-        const raw = readFileSync(STATE_PATH, "utf-8");
-        return JSON.parse(raw) as KultumState;
-    } catch {
-        return null;
-    }
+    return state;
 }
 
 function saveState(state: KultumState): void {
-    writeFileSync(STATE_PATH, JSON.stringify(state, null, 2), "utf-8");
-}
-
-// ---------------------------------------------------------------------------
-// Format tanggal "YYYY-MM-DD" dalam timezone Asia/Jakarta
-// ---------------------------------------------------------------------------
-
-function formatDateJakarta(date: Date): string {
-    // Intl.DateTimeFormat menggunakan timezone lokal yang sudah diset via TZ=Asia/Jakarta
-    // Gunakan toLocaleDateString dengan locale en-CA untuk format YYYY-MM-DD
-    const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Jakarta",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    }).format(date);
-
-    return parts; // sudah dalam format "YYYY-MM-DD"
+    writeJson(STATE_FILE, state);
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +85,7 @@ export function getOrCreateKultumForDate(tomorrowDate: Date): {
     petugas: PetugasKultum;
     reminderSent: boolean;
 } {
-    const dateStr = formatDateJakarta(tomorrowDate);
+    const dateStr = formatDateKey(tomorrowDate);
     const existingState = loadState();
 
     // Jika state ada dan untuk tanggal yang sama → gunakan state yang ada
@@ -150,11 +122,26 @@ export function getOrCreateKultumForDate(tomorrowDate: Date): {
 }
 
 /**
+ * Melihat petugas kultum untuk tanggal tertentu TANPA melakukan rotasi.
+ * Mengembalikan null jika petugas untuk tanggal itu belum ditentukan
+ * (rotasi baru terjadi saat reminder Subuh pukul 20:30 malam sebelumnya).
+ */
+export function peekKultumForDate(date: Date): PetugasKultum | null {
+    const state = loadState();
+
+    if (state && state.scheduledDate === formatDateKey(date)) {
+        return petugasKultumList[state.index];
+    }
+
+    return null;
+}
+
+/**
  * Tandai bahwa reminder untuk tanggal tertentu sudah terkirim.
  * Dipanggil setelah WhatsApp message berhasil dikirim.
  */
 export function markReminderSent(tomorrowDate: Date): void {
-    const dateStr = formatDateJakarta(tomorrowDate);
+    const dateStr = formatDateKey(tomorrowDate);
     const state = loadState();
 
     if (state && state.scheduledDate === dateStr) {
@@ -168,7 +155,7 @@ export function markReminderSent(tomorrowDate: Date): void {
  * Digunakan untuk mencegah duplicate reminder.
  */
 export function isReminderSent(tomorrowDate: Date): boolean {
-    const dateStr = formatDateJakarta(tomorrowDate);
+    const dateStr = formatDateKey(tomorrowDate);
     const state = loadState();
 
     return (

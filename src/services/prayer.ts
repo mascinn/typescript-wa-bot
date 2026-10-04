@@ -1,4 +1,5 @@
 import { config } from '../config/index.js';
+import { formatDateKey } from '../utils/time.js';
 
 
 export interface PrayerTimes {
@@ -9,6 +10,30 @@ export interface PrayerTimes {
     isya: string;
 }
 
+export type PrayerName = keyof PrayerTimes;
+
+/** Urutan shalat dalam sehari. */
+export const PRAYER_ORDER: PrayerName[] = ["subuh", "dzuhur", "ashar", "maghrib", "isya"];
+
+/** Label tampilan untuk setiap shalat. */
+export const PRAYER_LABELS: Record<PrayerName, string> = {
+    subuh:   "Subuh",
+    dzuhur:  "Dzuhur",
+    ashar:   "Ashar",
+    maghrib: "Maghrib",
+    isya:    "Isya",
+};
+
+// Cache jadwal per tanggal ("YYYY-MM-DD") supaya API tidak dipanggil berulang
+// (scheduler jalan tiap menit + command dari user).
+const cache = new Map<string, PrayerTimes>();
+const MAX_CACHE_ENTRIES = 7;
+
+/** Ambil "HH:mm" saja dari string jam API (antisipasi suffix seperti " (WIB)"). */
+function cleanTime(value: string): string {
+    return /(\d{1,2}:\d{2})/.exec(value)?.[1] ?? value;
+}
+
 /**
  * Mengambil jadwal shalat untuk tanggal tertentu dari AlAdhan API.
  * Gunakan fungsi ini ketika perlu jadwal selain hari ini (misal: besok untuk reminder Subuh).
@@ -16,17 +41,16 @@ export interface PrayerTimes {
  * @param date - objek Date yang akan diambil jadwalnya
  */
 export async function getPrayerTimesForDate(date: Date): Promise<PrayerTimes> {
-    // Format tanggal sesuai format AlAdhan API: "DD-MM-YYYY"
-    // Gunakan Intl agar selalu dalam Asia/Jakarta, bukan UTC server
-    const formatter = new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Asia/Jakarta",
-        day:   "2-digit",
-        month: "2-digit",
-        year:  "numeric",
-    });
+    const key = formatDateKey(date);
+    const cached = cache.get(key);
 
-    // en-GB menghasilkan "DD/MM/YYYY" → ganti "/" dengan "-"
-    const dateString = formatter.format(date).replace(/\//g, "-");
+    if (cached) {
+        return cached;
+    }
+
+    // Format tanggal sesuai format AlAdhan API: "DD-MM-YYYY"
+    const [year, month, day] = key.split("-");
+    const dateString = `${day}-${month}-${year}`;
 
     const url =
         `${config.prayer.apiUrl}/timingsByCity/${dateString}` +
@@ -35,21 +59,37 @@ export async function getPrayerTimesForDate(date: Date): Promise<PrayerTimes> {
         `&method=${config.prayer.method}` +
         `&timezonestring=${encodeURIComponent(config.prayer.timezone)}`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
 
     if (!response.ok) {
         throw new Error(`Prayer API error: ${response.status}`);
     }
 
     const result = await response.json();
+    const timings = result?.data?.timings;
 
-    return {
-        subuh:   result.data.timings.Fajr,
-        dzuhur:  result.data.timings.Dhuhr,
-        ashar:   result.data.timings.Asr,
-        maghrib: result.data.timings.Maghrib,
-        isya:    result.data.timings.Isha,
+    if (!timings) {
+        throw new Error("Prayer API error: format respons tidak dikenali");
+    }
+
+    const times: PrayerTimes = {
+        subuh:   cleanTime(timings.Fajr),
+        dzuhur:  cleanTime(timings.Dhuhr),
+        ashar:   cleanTime(timings.Asr),
+        maghrib: cleanTime(timings.Maghrib),
+        isya:    cleanTime(timings.Isha),
     };
+
+    cache.set(key, times);
+
+    // Buang entry paling lama agar cache tidak membengkak
+    while (cache.size > MAX_CACHE_ENTRIES) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey === undefined) break;
+        cache.delete(oldestKey);
+    }
+
+    return times;
 }
 
 /**
@@ -58,4 +98,4 @@ export async function getPrayerTimesForDate(date: Date): Promise<PrayerTimes> {
  */
 export async function getPrayerTimes(): Promise<PrayerTimes> {
     return getPrayerTimesForDate(new Date());
-}
+}

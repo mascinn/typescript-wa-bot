@@ -2,8 +2,8 @@
   "senin": {
     "subuh": {
       "adzan": {
-        "nama": "Basit",
-        "nomor": "6285766840697"
+        "nama": "Ananda",
+        "nomor": "6285180530165"
       },
       "imam": {
         "nama": "Iskandar",
@@ -22,32 +22,32 @@
     },
     "ashar": {
       "adzan": {
-        "nama": "Firdaus",
-        "nomor": "6283141877481"
+        "nama": "Arjuna",
+        "nomor": "6285268988283"
       },
       "imam": {
-        "nama": "Basit",
-        "nomor": "6285766840697"
+        "nama": "Fajar",
+        "nomor": "6285768971813"
       }
     },
     "maghrib": {
+      "adzan": {
+        "nama": "Makhasin",
+        "nomor": "6285758970652"
+      },
+      "imam": {
+        "nama": "Imam",
+        "nomor": "6288274018823"
+      }
+    },
+    "isya": {
       "adzan": {
         "nama": "Ruzi",
         "nomor": "6282298399181"
       },
       "imam": {
-        "nama": "Arjuna",
-        "nomor": "6285268988283"
-      }
-    },
-    "isya": {
-      "adzan": {
-        "nama": "Imam",
-        "nomor": "6288274018823"
-      },
-      "imam": {
-        "nama": "Makhasin",
-        "nomor": "6285758970652"
+        "nama": "Firdaus",
+        "nomor": "6283141877481"
       }
     }
   },
@@ -64,8 +64,8 @@
     },
     "dzuhur": {
       "adzan": {
-        "nama": "Firdaus",
-        "nomor": "6283141877481"
+        "nama": "Fajar",
+        "nomor": "6285768971813"
       },
       "imam": {
         "nama": "Haris",
@@ -74,12 +74,12 @@
     },
     "ashar": {
       "adzan": {
-        "nama": "Firdaus",
-        "nomor": "6283141877481"
+        "nama": "Fajar",
+        "nomor": "6285768971813"
       },
       "imam": {
-        "nama": "Ananda",
-        "nomor": "6285180530165"
+        "nama": "Makhasin",
+        "nomor": "6285758970652"
       }
     },
     "maghrib": {
@@ -94,8 +94,8 @@
     },
     "isya": {
       "adzan": {
-        "nama": "Ananda",
-        "nomor": "6285180530165"
+        "nama": "Ruzi",
+        "nomor": "6282298399181"
       },
       "imam": {
         "nama": "Arif",
@@ -106,12 +106,12 @@
   "rabu": {
     "subuh": {
       "adzan": {
-        "nama": "Arif",
-        "nomor": "6283181878854"
+        "nama": "Makhasin",
+        "nomor": "6285758970652"
       },
       "imam": {
-        "nama": "Ananda",
-        "nomor": "6285180530165"
+        "nama": "Basit",
+        "nomor": "6285766840697"
       }
     },
     "dzuhur": {
@@ -130,8 +130,8 @@
         "nomor": "6285180530165"
       },
       "imam": {
-        "nama": "Ruzi",
-        "nomor": "6282298399181"
+        "nama": "Arjuna",
+        "nomor": "6285268988283"
       }
     },
     "maghrib": {
@@ -140,14 +140,14 @@
         "nomor": "6283181878854"
       },
       "imam": {
-        "nama": "Iskandar",
-        "nomor": "6285758426987"
+        "nama": "Firdaus",
+        "nomor": "6283141877481"
       }
     },
     "isya": {
       "adzan": {
-        "nama": "Arjuna",
-        "nomor": "6285268988283"
+        "nama": "Ruzi",
+        "nomor": "6282298399181"
       },
       "imam": {
         "nama": "Imam",
@@ -158,18 +158,18 @@
   "kamis": {
     "subuh": {
       "adzan": {
-        "nama": "Ananda",
-        "nomor": "6285180530165"
-      },
-      "imam": {
         "nama": "Makhasin",
         "nomor": "6285758970652"
+      },
+      "imam": {
+        "nama": "Firdaus",
+        "nomor": "6283141877481"
       }
     },
     "dzuhur": {
       "adzan": {
-        "nama": "Firdaus",
-        "nomor": "6283141877481"
+        "nama": "Fajar",
+        "nomor": "6285768971813"
       },
       "imam": {
         "nama": "Haris",
@@ -178,12 +178,12 @@
     },
     "ashar": {
       "adzan": {
-        "nama": "Arif",
-        "nomor": "6283181878854"
-      },
-      "imam": {
         "nama": "Fajar",
         "nomor": "6285768971813"
+      },
+      "imam": {
+        "nama": "Haris",
+        "nomor": "6282367759870"
       }
     },
     "maghrib": {
@@ -198,8 +198,8 @@
     },
     "isya": {
       "adzan": {
-        "nama": "Ruzi",
-        "nomor": "6282298399181"
+        "nama": "Basit",
+        "nomor": "6285766840697"
       },
       "imam": {
         "nama": "Imam",
@@ -210,23 +210,23 @@
   "jumat": {
     "subuh": {
       "adzan": {
-        "nama": "Makhasin",
-        "nomor": "6285758970652"
+        "nama": "Iskandar",
+        "nomor": "6285758426987"
       },
       "imam": {
-        "nama": "Arjuna",
-        "nomor": "6285268988283"
+        "nama": "Ananda",
+        "nomor": "6285180530165"
       }
     },
     "dzuhur": null,
     "ashar": {
       "adzan": {
-        "nama": "Makhasin",
-        "nomor": "6285758970652"
-      },
-      "imam": {
         "nama": "Ananda",
         "nomor": "6285180530165"
+      },
+      "imam": {
+        "nama": "Makhasin",
+        "nomor": "6285758970652"
       }
     },
     "maghrib": {
@@ -241,34 +241,34 @@
     },
     "isya": {
       "adzan": {
-        "nama": "Ruzi",
-        "nomor": "6282298399181"
-      },
-      "imam": {
         "nama": "Firdaus",
         "nomor": "6283141877481"
+      },
+      "imam": {
+        "nama": "Basit",
+        "nomor": "6285766840697"
       }
     }
   },
   "sabtu": {
     "subuh": {
       "adzan": {
-        "nama": "Fajar",
-        "nomor": "6285768971813"
-      },
-      "imam": {
         "nama": "Basit",
         "nomor": "6285766840697"
+      },
+      "imam": {
+        "nama": "Firdaus",
+        "nomor": "6283141877481"
       }
     },
     "dzuhur": {
       "adzan": {
-        "nama": "Fajar",
-        "nomor": "6285768971813"
+        "nama": "Arjuna",
+        "nomor": "6285268988283"
       },
       "imam": {
-        "nama": "Haris",
-        "nomor": "6282367759870"
+        "nama": "Iskandar",
+        "nomor": "6285758426987"
       }
     },
     "ashar": {
@@ -283,8 +283,8 @@
     },
     "maghrib": {
       "adzan": {
-        "nama": "Makhasin",
-        "nomor": "6285758970652"
+        "nama": "Fajar",
+        "nomor": "6285768971813"
       },
       "imam": {
         "nama": "Iskandar",
@@ -293,8 +293,8 @@
     },
     "isya": {
       "adzan": {
-        "nama": "Iskandar",
-        "nomor": "6285758426987"
+        "nama": "Ruzi",
+        "nomor": "6282298399181"
       },
       "imam": {
         "nama": "Arif",
@@ -309,14 +309,14 @@
         "nomor": "6282298399181"
       },
       "imam": {
-        "nama": "Fajar",
-        "nomor": "6285768971813"
+        "nama": "Firdaus",
+        "nomor": "6283141877481"
       }
     },
     "dzuhur": {
       "adzan": {
-        "nama": "Fajar",
-        "nomor": "6285768971813"
+        "nama": "Arjuna",
+        "nomor": "6285268988283"
       },
       "imam": {
         "nama": "Haris",
@@ -325,12 +325,12 @@
     },
     "ashar": {
       "adzan": {
-        "nama": "Iskandar",
-        "nomor": "6285758426987"
+        "nama": "Ananda",
+        "nomor": "6285180530165"
       },
       "imam": {
-        "nama": "Fajar",
-        "nomor": "6285768971813"
+        "nama": "Iskandar",
+        "nomor": "6285758426987"
       }
     },
     "maghrib": {
@@ -339,8 +339,8 @@
         "nomor": "6288274018823"
       },
       "imam": {
-        "nama": "Arjuna",
-        "nomor": "6285268988283"
+        "nama": "Firdaus",
+        "nomor": "6283141877481"
       }
     },
     "isya": {
@@ -349,8 +349,8 @@
         "nomor": "6282298399181"
       },
       "imam": {
-        "nama": "Basit",
-        "nomor": "6285766840697"
+        "nama": "Arif",
+        "nomor": "6283181878854"
       }
     }
   }

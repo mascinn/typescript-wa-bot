@@ -1,96 +1,125 @@
-import { subtractMinutes, timeToDate } from "../utils/time.js";
-import type { PrayerTimes } from "./prayer.js";
 import type { WASocket } from "@whiskeysockets/baileys";
 import { config } from "../config/index.js";
-import { getCurrentDay, getDayName } from "../utils/day.js";
-import { getPetugas } from "./petugas.js";
-import { getPrayerTimes, getPrayerTimesForDate } from "./prayer.js";
+import { getDayName } from "../utils/day.js";
+import { readJson, writeJson } from "../utils/storage.js";
+import {
+    formatDateKey,
+    formatDuration,
+    getTomorrow,
+    subtractMinutes,
+    timeToDate,
+} from "../utils/time.js";
+import { sendGroupReminder } from "./jadwal-image.js";
 import {
     getOrCreateKultumForDate,
     isReminderSent,
     markReminderSent,
 } from "./kultum.js";
+import { getPetugas } from "./petugas.js";
+import {
+    getPrayerTimes,
+    getPrayerTimesForDate,
+    PRAYER_LABELS,
+    PRAYER_ORDER,
+} from "./prayer.js";
 
 // ---------------------------------------------------------------------------
 // Konstanta
 // ---------------------------------------------------------------------------
 
-const REMINDER_WINDOW_MINUTES = 2;
-
 // Jam dan menit reminder Subuh (pukul 20:30 WIB)
 const SUBUH_REMINDER_HOUR   = 20;
 const SUBUH_REMINDER_MINUTE = 30;
 
+const TICK_INTERVAL_MS = 60 * 1000;
+
 // ---------------------------------------------------------------------------
-// State in-memory (deduplication shalat non-Subuh)
+// State persisten (deduplication shalat non-Subuh)
+// Disimpan ke file supaya reminder tidak terkirim dua kali jika bot restart.
 // Subuh menggunakan state file persisten dari kultum.ts
 // ---------------------------------------------------------------------------
 
-const sentReminders = new Set<string>();
+const REMINDER_STATE_FILE = "reminder-state.json";
+
+interface ReminderState {
+    date: string;   // "YYYY-MM-DD"
+    sent: string[]; // daftar shalat yang reminder-nya sudah terkirim hari itu
+}
+
+function loadSentToday(today: string): Set<string> {
+    const state = readJson<ReminderState>(REMINDER_STATE_FILE);
+    return new Set(state?.date === today ? state.sent : []);
+}
+
+function saveSentToday(today: string, sent: Set<string>): void {
+    writeJson(REMINDER_STATE_FILE, { date: today, sent: [...sent] } satisfies ReminderState);
+}
 
 // ---------------------------------------------------------------------------
 // Scheduler interval
 // ---------------------------------------------------------------------------
 
 let schedulerInterval: NodeJS.Timeout | null = null;
+let tickRunning = false;
+
+function toJid(nomor: string): string {
+    return `${nomor}@s.whatsapp.net`;
+}
 
 // ---------------------------------------------------------------------------
 // Reminder shalat biasa (Dzuhur, Ashar, Maghrib, Isya)
 // Subuh TIDAK masuk di sini — ditangani oleh checkSubuhReminder()
 // ---------------------------------------------------------------------------
 
-async function checkRegularReminders(
-    times: PrayerTimes,
-    sock: WASocket
-) {
-    const now  = new Date();
-    const hari = getCurrentDay();
+async function checkRegularReminders(sock: WASocket) {
+    const now   = new Date();
+    const today = formatDateKey(now);
+    const hari  = getDayName(now);
+    const times = await getPrayerTimes();
+    const sent  = loadSentToday(today);
 
-    for (const [shalat, time] of Object.entries(times)) {
+    for (const shalat of PRAYER_ORDER) {
         // ── Skip Subuh — ditangani secara terpisah ──
         if (shalat === "subuh") continue;
+        if (sent.has(shalat)) continue;
 
-        const prayerTime  = timeToDate(time);
-        const reminderTime = subtractMinutes(prayerTime, 15);
+        const time         = times[shalat];
+        const prayerTime   = timeToDate(time, now);
+        const reminderTime = subtractMinutes(prayerTime, config.prayer.reminderMinutes);
 
-        const windowEnd = new Date(
-            reminderTime.getTime() +
-            REMINDER_WINDOW_MINUTES * 60 * 1000
+        // Window: dari waktu reminder sampai masuk waktu shalat.
+        // Jika bot sempat mati/reconnect saat waktu reminder, reminder tetap
+        // dikirim begitu bot hidup lagi (selama belum masuk waktu shalat).
+        if (now < reminderTime || now >= prayerTime) continue;
+
+        const petugas = getPetugas(hari, shalat);
+
+        if (!petugas) {
+            // Jumat Dzuhur sengaja kosong (Shalat Jumat) → tidak perlu warning
+            if (!(hari === "jumat" && shalat === "dzuhur")) {
+                console.warn(`⚠️ Petugas ${PRAYER_LABELS[shalat]} hari ${hari} tidak ditemukan.`);
+            }
+            sent.add(shalat);
+            saveSentToday(today, sent);
+            continue;
+        }
+
+        const minutesLeft = Math.ceil((prayerTime.getTime() - now.getTime()) / 60000);
+
+        await sendGroupReminder(
+            sock,
+            `🕌 *${PRAYER_LABELS[shalat]} — ${time}*\n` +
+            `⏰ ${formatDuration(minutesLeft)} lagi\n\n` +
+            `🔊 Muadzin: ${petugas.adzan.nama} — @${petugas.adzan.nomor}\n` +
+            `🤲 Imam: ${petugas.imam.nama} — @${petugas.imam.nomor}`,
+            [toJid(petugas.adzan.nomor), toJid(petugas.imam.nomor)]
         );
 
-        if (now >= reminderTime && now < windowEnd) {
-            const reminderId = `${shalat}-${reminderTime.toDateString()}`;
+        // Tandai terkirim SETELAH berhasil kirim, supaya kalau gagal dicoba lagi menit berikutnya
+        sent.add(shalat);
+        saveSentToday(today, sent);
 
-            if (sentReminders.has(reminderId)) {
-                continue;
-            }
-
-            const petugas = getPetugas(hari, shalat);
-
-            if (!petugas) {
-                continue;
-            }
-
-            const adzanJid = `${petugas.adzan.nomor}@s.whatsapp.net`;
-            const imamJid  = `${petugas.imam.nomor}@s.whatsapp.net`;
-
-            sentReminders.add(reminderId);
-
-            await sock.sendMessage(
-                config.whatsapp.groupJid,
-                {
-                    text:
-                        `🕌 *${shalat} — ${time}*\n` +
-                        `⏰ 15 menit lagi\n\n` +
-                        `🔊 Muadzin: ${petugas.adzan.nama} — @${petugas.adzan.nomor}\n` +
-                        `🤲 Imam: ${petugas.imam.nama} — @${petugas.imam.nomor}`,
-
-                    mentions: [adzanJid, imamJid],
-                }
-            );
-
-            console.log(`🔔 Reminder sent: ${shalat} — ${time}`);
-        }
+        console.log(`🔔 Reminder sent: ${PRAYER_LABELS[shalat]} — ${time}`);
     }
 }
 
@@ -99,29 +128,13 @@ async function checkRegularReminders(
 // ---------------------------------------------------------------------------
 
 /**
- * Mendapatkan objek Date "besok" dalam timezone Asia/Jakarta.
- * Menambahkan 1 hari ke tanggal saat ini.
- */
-function getTomorrow(): Date {
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow;
-}
-
-/**
- * Mengecek apakah sekarang berada dalam window reminder Subuh (20:30 WIB).
- * Window: 20:30:00 s/d 20:31:59 (2 menit, konsisten dengan reminder biasa).
+ * Mengecek apakah sekarang sudah lewat pukul 20:30 (dan belum tengah malam).
+ * Window sengaja dibuat sampai 23:59 supaya reminder tetap terkirim
+ * walaupun bot sempat mati/reconnect tepat pukul 20:30.
  */
 function isSubuhReminderWindow(now: Date): boolean {
-    const hour   = now.getHours();
-    const minute = now.getMinutes();
-
-    return (
-        hour === SUBUH_REMINDER_HOUR &&
-        minute >= SUBUH_REMINDER_MINUTE &&
-        minute < SUBUH_REMINDER_MINUTE + REMINDER_WINDOW_MINUTES
-    );
+    const minutesOfDay = now.getHours() * 60 + now.getMinutes();
+    return minutesOfDay >= SUBUH_REMINDER_HOUR * 60 + SUBUH_REMINDER_MINUTE;
 }
 
 /**
@@ -133,28 +146,21 @@ function isSubuhReminderWindow(now: Date): boolean {
  * 3. Ambil jadwal Subuh besok dari API
  * 4. Ambil petugas Subuh besok dari jadwal-petugas.json
  * 5. Ambil/rotasi petugas kultum untuk besok
- * 6. Kirim pesan WhatsApp dengan mention ketiga petugas
+ * 6. Kirim pesan WhatsApp (reply ke foto jadwal) dengan mention ketiga petugas
  * 7. Tandai reminder sudah terkirim (tulis state file)
  */
 async function checkSubuhReminder(sock: WASocket) {
     const now      = new Date();
-    const tomorrow = getTomorrow();
+    const tomorrow = getTomorrow(now);
 
-    // Tidak dalam window 20:30 → tidak perlu lanjut
+    // Belum jam 20:30 → tidak perlu lanjut
     if (!isSubuhReminderWindow(now)) return;
 
     // Sudah pernah dikirim untuk tanggal besok → skip (deduplication)
     if (isReminderSent(tomorrow)) return;
 
     // ── Ambil jadwal Subuh besok dari API ──
-    let tomorrowTimes;
-    try {
-        tomorrowTimes = await getPrayerTimesForDate(tomorrow);
-    } catch (err) {
-        console.error("❌ Gagal mengambil jadwal Subuh besok:", err);
-        return;
-    }
-
+    const tomorrowTimes = await getPrayerTimesForDate(tomorrow);
     const subuhTime = tomorrowTimes.subuh;
 
     // ── Ambil hari dari tanggal besok ──
@@ -171,24 +177,15 @@ async function checkSubuhReminder(sock: WASocket) {
     // ── Ambil/rotasi petugas kultum untuk besok ──
     const { petugas: kultum } = getOrCreateKultumForDate(tomorrow);
 
-    // ── Bentuk JID WhatsApp ──
-    const adzanJid  = `${petugas.adzan.nomor}@s.whatsapp.net`;
-    const imamJid   = `${petugas.imam.nomor}@s.whatsapp.net`;
-    const kultumJid = `${kultum.nomor}@s.whatsapp.net`;
-
-    // ── Kirim pesan ──
-    await sock.sendMessage(
-        config.whatsapp.groupJid,
-        {
-            text:
-                `🕌 *Subuh — ${subuhTime}*\n` +
-                `⏰ Petugas, bangun lebih awal ya!\n\n` +
-                `🔊 Muadzin: ${petugas.adzan.nama} — @${petugas.adzan.nomor}\n` +
-                `🤲 Imam: ${petugas.imam.nama} — @${petugas.imam.nomor}\n` +
-                `📖 Kultum: ${kultum.nama} — @${kultum.nomor}`,
-
-            mentions: [adzanJid, imamJid, kultumJid],
-        }
+    // ── Kirim pesan (reply ke foto jadwal) ──
+    await sendGroupReminder(
+        sock,
+        `🕌 *Subuh — ${subuhTime}*\n` +
+        `⏰ Petugas, bangun lebih awal ya!\n\n` +
+        `🔊 Muadzin: ${petugas.adzan.nama} — @${petugas.adzan.nomor}\n` +
+        `🤲 Imam: ${petugas.imam.nama} — @${petugas.imam.nomor}\n` +
+        `📖 Kultum: ${kultum.nama} — @${kultum.nomor}`,
+        [toJid(petugas.adzan.nomor), toJid(petugas.imam.nomor), toJid(kultum.nomor)]
     );
 
     // ── Tandai sudah terkirim ──
@@ -201,39 +198,45 @@ async function checkSubuhReminder(sock: WASocket) {
 }
 
 // ---------------------------------------------------------------------------
+// Tick — dijalankan setiap menit. Semua error ditangkap di sini supaya
+// satu kegagalan (API down, WhatsApp error) tidak mematikan proses bot.
+// ---------------------------------------------------------------------------
+
+async function tick(sock: WASocket) {
+    if (tickRunning) return; // cegah tick tumpang tindih jika API lambat
+    tickRunning = true;
+
+    try {
+        try {
+            await checkRegularReminders(sock);
+        } catch (err) {
+            console.error("❌ Gagal memproses reminder shalat:", err);
+        }
+
+        try {
+            await checkSubuhReminder(sock);
+        } catch (err) {
+            console.error("❌ Gagal memproses reminder Subuh:", err);
+        }
+    } finally {
+        tickRunning = false;
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-export function startReminderScheduler(
-    times: PrayerTimes,
-    sock: WASocket
-) {
+export function startReminderScheduler(sock: WASocket) {
     // Pastikan scheduler lama tidak berjalan
-    if (schedulerInterval) {
-        clearInterval(schedulerInterval);
-    }
-
-    let currentTimes = times;
-    let currentDate  = new Date().toDateString();
+    stopReminderScheduler();
 
     // Cek langsung ketika scheduler dimulai
-    checkRegularReminders(currentTimes, sock);
-    checkSubuhReminder(sock);
+    void tick(sock);
 
-    schedulerInterval = setInterval(async () => {
-        const today = new Date().toDateString();
-
-        // Ambil jadwal baru ketika berganti hari
-        if (today !== currentDate) {
-            currentTimes = await getPrayerTimes();
-            currentDate  = today;
-
-            console.log("📅 Prayer times updated");
-        }
-
-        checkRegularReminders(currentTimes, sock);
-        checkSubuhReminder(sock);
-    }, 60 * 1000);
+    // Jadwal shalat otomatis diambil ulang saat berganti hari
+    // (getPrayerTimes() memakai cache per tanggal)
+    schedulerInterval = setInterval(() => void tick(sock), TICK_INTERVAL_MS);
 }
 
 export function stopReminderScheduler() {
@@ -243,4 +246,4 @@ export function stopReminderScheduler() {
 
         console.log("⏹️ Reminder scheduler stopped");
     }
-}
+}

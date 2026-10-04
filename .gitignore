@@ -12,3 +12,6 @@ dist/
 
 # Logs
 *.log
+
+# Bot runtime state (rotasi kultum, reminder terkirim, foto jadwal)
+storage/
