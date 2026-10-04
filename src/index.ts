@@ -10,6 +10,7 @@ import { registerConnectionHandler } from "./handlers/connection.js";
 import { registerMessageHandler } from "./handlers/message.js";
 import { getPrayerTimes } from "./services/prayer.js";
 import { startReminderScheduler } from "./services/reminder.js";
+import { processOutbox } from "./services/outbox.js";
 
 const RECONNECT_DELAY_MS = 3000;
 
@@ -49,6 +50,12 @@ async function onConnected(sock: Awaited<ReturnType<typeof connectToWhatsApp>>) 
     startReminderScheduler(sock);
 
     console.log("⏰ Reminder scheduler started");
+
+    try {
+        await processOutbox(sock);
+    } catch (err) {
+        console.error("⚠️ Gagal memproses outbox saat startup:", err);
+    }
 }
 
 async function start() {

@@ -99,3 +99,40 @@ export function writeJson(fileName: string, data: unknown): void {
         });
     }
 }
+
+export async function readJsonAsync<T>(fileName: string): Promise<T | null> {
+    const client = getTursoClient();
+    if (client) {
+        try {
+            const rs = await client.execute({
+                sql: "SELECT value FROM kv_store WHERE key = ? LIMIT 1;",
+                args: [fileName],
+            });
+            if (rs.rows.length > 0) {
+                const val = JSON.parse(rs.rows[0].value as string, BufferJSON.reviver) as T;
+                memoryCache.set(fileName, val);
+                return val;
+            }
+            return null;
+        } catch (err) {
+            console.error(`⚠️ Gagal membaca ${fileName} dari Turso:`, err);
+        }
+    }
+
+    return readJson<T>(fileName);
+}
+
+export async function deleteKey(fileName: string): Promise<void> {
+    memoryCache.delete(fileName);
+    const client = getTursoClient();
+    if (client) {
+        try {
+            await client.execute({
+                sql: "DELETE FROM kv_store WHERE key = ?;",
+                args: [fileName],
+            });
+        } catch (err) {
+            console.error(`⚠️ Gagal menghapus ${fileName} di Turso:`, err);
+        }
+    }
+}

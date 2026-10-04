@@ -10,6 +10,7 @@ import {
     timeToDate,
 } from "../utils/time.js";
 import { sendGroupReminder } from "./jadwal-image.js";
+import { processOutbox } from "./outbox.js";
 import {
     getOrCreateKultumForDate,
     isReminderSent,
@@ -217,6 +218,12 @@ async function tick(sock: WASocket) {
             await checkSubuhReminder(sock);
         } catch (err) {
             console.error("❌ Gagal memproses reminder Subuh:", err);
+        }
+
+        try {
+            await processOutbox(sock);
+        } catch (err) {
+            console.error("❌ Gagal memproses antrean outbox:", err);
         }
     } finally {
         tickRunning = false;
